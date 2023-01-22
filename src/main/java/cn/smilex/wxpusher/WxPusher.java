@@ -42,11 +42,11 @@ public final class WxPusher {
     /**
      * 查询消息发送状态
      */
-    public static Result queryMessageStatus(Long messageId) {
-        if (messageId == null || messageId <= 0) {
-            return new Result(ResultCode.BIZ_FAIL, "messageId为空");
+    public static Result<?> queryMessageStatus(Long sendRecordId) {
+        if (sendRecordId == null || sendRecordId <= 0) {
+            return new Result<>(ResultCode.BIZ_FAIL, "sendRecordId为空");
         }
-        return HttpUtils.get(String.format("/api/send/query/%s", messageId));
+        return HttpUtils.get(String.format("/api/send/query/status?sendRecordId=%s", sendRecordId));
     }
 
     /**
