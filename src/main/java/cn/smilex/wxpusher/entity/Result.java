@@ -14,6 +14,7 @@ public class Result<T> {
     private Integer code;
     private String msg;
     private T data;
+    private Boolean success;
 
     public Result(Integer code, String msg) {
         this.code = code;
@@ -26,6 +27,6 @@ public class Result<T> {
     }
 
     public boolean isSuccess() {
-        return code == ResultCode.SUCCESS.getCode();
+        return this.success != null && success;
     }
 }

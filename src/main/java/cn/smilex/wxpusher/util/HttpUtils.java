@@ -1,16 +1,14 @@
 package cn.smilex.wxpusher.util;
 
+import cn.smilex.req.HttpBodyBuilder;
+import cn.smilex.req.HttpResponse;
 import cn.smilex.wxpusher.entity.Result;
 import cn.smilex.wxpusher.entity.ResultCode;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,6 +17,7 @@ import java.util.Set;
  * 作者：zjiecode
  * 时间：2019-09-05
  */
+@SuppressWarnings("unchecked")
 public final class HttpUtils {
     private static final String BASE_URL = "http://wxpusher.zjiecode.com";
     private static final String CHARSET_NAME = "UTF-8";
@@ -33,35 +32,25 @@ public final class HttpUtils {
      * @param path 请求后台的path
      * @return 发送的result结果
      */
-    public static Result post(Object data, String path) {
-        try {
-            if (data == null) {
-                return new Result(ResultCode.UNKNOWN_ERROR, "数据为空");
-            }
-            String dataStr = JsonUtil.toJsonString(data);
+    public static <T> Result<T> post(Object data, String path) {
+        return CommonUtil.tryRun(
+                () -> {
+                    if (data == null) {
+                        return new Result<>(ResultCode.UNKNOWN_ERROR, "数据为空");
+                    }
 
-            URL cUrl = new URL(buildUrl(path));
-            HttpURLConnection urlConnection = (HttpURLConnection) cUrl.openConnection();
-            urlConnection.setConnectTimeout(60000);
-            urlConnection.setReadTimeout(60000);
-            urlConnection.setUseCaches(false);
-            urlConnection.setRequestMethod("POST");
-            //设置请求属性
-            urlConnection.setRequestProperty("Content-Type", "application/json");
-            urlConnection.setRequestProperty("Charset", CHARSET_NAME);
-            urlConnection.setDoOutput(true);
-            urlConnection.connect();
-            OutputStream outputStream = urlConnection.getOutputStream();
-            outputStream.write(dataStr.getBytes(Charset.forName(CHARSET_NAME)));
-            outputStream.flush();
-            return dealConnect(urlConnection);
-        } catch (MalformedURLException e) {
-            return new Result(ResultCode.NETWORK_ERROR, e.getMessage());
-        } catch (IOException e) {
-            return new Result(ResultCode.NETWORK_ERROR, e.toString());
-        } catch (Throwable e) {
-            return new Result(ResultCode.UNKNOWN_ERROR, e.toString());
-        }
+                    HttpResponse httpResponse = RequestUtil.post(
+                            buildUrl(path),
+                            RequestUtil.REQUEST_JSON_HEADER,
+                            HttpBodyBuilder.ofString(JsonUtil.toJsonString(data))
+                    );
+
+                    return dealConnect(httpResponse);
+                },
+                () -> null,
+                e -> {
+                }
+        );
     }
 
     public static Result get(String path) {
@@ -71,31 +60,20 @@ public final class HttpUtils {
     /**
      * 发送get请求
      */
-    public static Result get(Map<String, Object> data, String path) {
-        try {
-            String url = buildUrl(path);
-            String query = parseMap2Query(data);
-            if (!query.isEmpty()) {
-                url = url + "?" + query;
-            }
-            URL cUrl = new URL(url);
-            HttpURLConnection urlConnection = (HttpURLConnection) cUrl.openConnection();
-            urlConnection.setConnectTimeout(60000);
-            urlConnection.setReadTimeout(60000);
-            urlConnection.setUseCaches(false);
-            urlConnection.setRequestMethod("GET");
-            //设置请求属性
-            urlConnection.setRequestProperty("Charset", CHARSET_NAME);
-            urlConnection.setDoOutput(true);
-            urlConnection.connect();
-            return dealConnect(urlConnection);
-        } catch (MalformedURLException e) {
-            return new Result(ResultCode.NETWORK_ERROR, e.getMessage());
-        } catch (IOException e) {
-            return new Result(ResultCode.NETWORK_ERROR, e.toString());
-        } catch (Throwable e) {
-            return new Result(ResultCode.UNKNOWN_ERROR, e.toString());
+    public static <T> Result<T> get(Map<String, Object> data, String path) {
+        String url = buildUrl(path);
+        String query = parseMap2Query(data);
+        if (!query.isEmpty()) {
+            url = url + "?" + query;
         }
+
+        return dealConnect(
+                RequestUtil.get(
+                        url,
+                        RequestUtil.REQUEST_JSON_HEADER,
+                        HttpBodyBuilder.ofString(query)
+                )
+        );
     }
 
     /**
@@ -134,32 +112,25 @@ public final class HttpUtils {
     /**
      * 处理连接以后的状态信息
      *
-     * @param urlConnection 打开的连接
+     * @param httpResponse 请求响应对象
      * @return 返回发送结果
      */
-    private static Result dealConnect(HttpURLConnection urlConnection) {
-        try {
-            int responseCode = urlConnection.getResponseCode();
-            if (responseCode != 200) {
-                return new Result(urlConnection.getResponseCode(), "http请求错误:" + responseCode);
-            }
-            InputStream inputStream = urlConnection.getInputStream();
-            String res = inputStream2String(inputStream);
-            if (res == null || res.isEmpty()) {
-                return new Result(ResultCode.INTERNAL_SERVER_ERROR, "服务器返回异常");
-            }
-            Result result = JsonUtil.parseByClass(res, Result.class);
-            if (result == null) {
-                return new Result(ResultCode.DATA_ERROR, "服务器返回数据解析异常");
-            }
-            return result;
-        } catch (MalformedURLException e) {
-            return new Result(ResultCode.NETWORK_ERROR, e.getMessage());
-        } catch (IOException e) {
-            return new Result(ResultCode.NETWORK_ERROR, e.getMessage());
-        } catch (Throwable e) {
-            return new Result(ResultCode.UNKNOWN_ERROR, e.getMessage());
+    private static <T> Result<T> dealConnect(HttpResponse httpResponse) {
+        int responseCode = Integer.parseInt(httpResponse.getStatusCode());
+        if (responseCode != 200) {
+            return new Result<>(responseCode, "http请求错误:" + responseCode);
         }
+
+        if (StringUtils.isBlank(httpResponse.getBody())) {
+            return new Result<>(ResultCode.INTERNAL_SERVER_ERROR, "服务器返回异常");
+        }
+
+        Result<T> result = JsonUtil.parseByClass(httpResponse.getBody(), Result.class);
+        if (result == null) {
+            return new Result<>(ResultCode.DATA_ERROR, "服务器返回数据解析异常");
+        }
+
+        return result;
     }
 
     /**
@@ -176,7 +147,7 @@ public final class HttpUtils {
             while ((len = inputStream.read(bytes)) != -1) {
                 outputStream.write(bytes, 0, len);
             }
-            return new String(outputStream.toByteArray(), CHARSET_NAME);
+            return outputStream.toString(CHARSET_NAME);
         } catch (IOException e) {
             e.printStackTrace();
         }

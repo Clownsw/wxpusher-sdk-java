@@ -22,11 +22,12 @@ public final class WxPusher {
      * 发送消息
      */
     public static Result<List<MessageResult>> send(Message message) {
-        Result result = verify(message);
+        Result<List<MessageResult>> result = verify(message);
         if (result != null) {
             return result;
         }
-        Result sendResult = HttpUtils.post(message, "/api/send/message");
+
+        Result<List<MessageResult>> sendResult = HttpUtils.post(message, "/api/send/message");
         if (sendResult.isSuccess()) {
             //转换，方便调用
             Object data = sendResult.getData();
@@ -95,13 +96,13 @@ public final class WxPusher {
      */
     public static Result<Page<WxUser>> queryWxUser(String appToken, Integer page, Integer pageSize, String uid) {
         if (appToken == null || appToken.isEmpty()) {
-            return new Result(ResultCode.BIZ_FAIL, "appToken不能为空");
+            return new Result<>(ResultCode.BIZ_FAIL, "appToken不能为空");
         }
         if (page == null || page <= 0) {
-            return new Result(ResultCode.BIZ_FAIL, "page不合法");
+            return new Result<>(ResultCode.BIZ_FAIL, "page不合法");
         }
         if (page == null || page <= 0) {
-            return new Result(ResultCode.BIZ_FAIL, "pageSize不合法");
+            return new Result<>(ResultCode.BIZ_FAIL, "pageSize不合法");
         }
         Map<String, Object> params = new HashMap<>();
         params.put("appToken", appToken);
@@ -123,17 +124,16 @@ public final class WxPusher {
     /**
      * 验证消息合法性，客户端验证比较宽松，主要在服务端进行校验
      */
-    private static Result verify(Message message) {
+    private static <T> Result<T> verify(Message message) {
         if (message == null) {
-            return new Result(ResultCode.BIZ_FAIL, "消息不能为空");
+            return new Result<>(ResultCode.BIZ_FAIL, "消息不能为空");
         }
         if (message.getAppToken() == null || message.getAppToken().length() <= 0) {
-            return new Result(ResultCode.BIZ_FAIL, "appToken不能为空");
+            return new Result<>(ResultCode.BIZ_FAIL, "appToken不能为空");
         }
         if (message.getContent() == null || message.getContent().length() <= 0) {
-            return new Result(ResultCode.BIZ_FAIL, "content内容不能为空");
+            return new Result<>(ResultCode.BIZ_FAIL, "content内容不能为空");
         }
         return null;
     }
-
 }
