@@ -25,7 +25,10 @@ public final class JsonUtil {
         return CommonUtil.tryRun(
                 () -> OBJECT_MAPPER.readValue(jsonString, clazz),
                 () -> null,
-                e -> log.error("", e)
+                e -> {
+                    log.info("jsonString: {}", jsonString);
+                    log.error("", e);
+                }
         );
     }
 
