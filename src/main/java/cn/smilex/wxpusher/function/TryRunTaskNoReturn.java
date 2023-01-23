@@ -5,5 +5,5 @@ package cn.smilex.wxpusher.function;
  */
 @FunctionalInterface
 public interface TryRunTaskNoReturn {
-    void run(Object... params) throws Throwable;
+    void run() throws Throwable;
 }
