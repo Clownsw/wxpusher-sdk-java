@@ -1,13 +1,13 @@
 package cn.smilex.wxpusher;
 
+import cn.smilex.wxpusher.builder.HashMapBuilder;
 import cn.smilex.wxpusher.entity.*;
 import cn.smilex.wxpusher.util.HttpUtils;
 import cn.smilex.wxpusher.util.JsonUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 说明：WxPusher的客户端
@@ -95,23 +95,28 @@ public final class WxPusher {
         if (appToken == null || appToken.isEmpty()) {
             return new Result<>(ResultCode.BIZ_FAIL, "appToken不能为空");
         }
+
         if (page == null || page <= 0) {
             return new Result<>(ResultCode.BIZ_FAIL, "page不合法");
         }
-        if (page == null || page <= 0) {
+
+        if (pageSize == null || pageSize <= 0) {
             return new Result<>(ResultCode.BIZ_FAIL, "pageSize不合法");
         }
-        Map<String, Object> params = new HashMap<>();
-        params.put("appToken", appToken);
-        params.put("page", page);
-        params.put("pageSize", pageSize);
-        if (uid != null && !uid.isEmpty()) {
-            params.put("uid", uid);
-        }
-        Result result = HttpUtils.get(params, "/api/fun/wxuser");
+
+        Result<Page<WxUser>> result = HttpUtils.get(
+                new HashMapBuilder<String, Object>(4)
+                        .put("appToken", appToken)
+                        .put("page", page)
+                        .put("pageSize", pageSize)
+                        .ifPut(() -> StringUtils.isNotBlank(uid), map -> map.put("uid", uid))
+                        .getValue(),
+                "/api/fun/wxuser"
+        );
+
         if (result.getData() != null) {
             String jsonString = JsonUtil.toJsonString(result.getData());
-            Page pageData = JsonUtil.parseByClass(jsonString, new TypeReference<Page<WxUser>>() {
+            Page<WxUser> pageData = JsonUtil.parseByClass(jsonString, new TypeReference<Page<WxUser>>() {
             });
             result.setData(pageData);
         }
