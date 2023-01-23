@@ -31,8 +31,7 @@ public final class WxPusher {
         if (sendResult.isSuccess()) {
             //转换，方便调用
             Object data = sendResult.getData();
-            String s = JsonUtil.toJsonString(data);
-            List<MessageResult> messageResults = JsonUtil.parseByClass(s, new TypeReference<List<MessageResult>>() {
+            List<MessageResult> messageResults = JsonUtil.parseByClass(JsonUtil.toJsonString(data), new TypeReference<List<MessageResult>>() {
             });
             sendResult.setData(messageResults);
         }
@@ -53,11 +52,9 @@ public final class WxPusher {
      * 创建带参数的app临时二维码
      */
     public static Result<CreateQrcodeResp> createAppTempQrcode(CreateQrcodeReq createQrcodeReq) {
-        Result result = HttpUtils.post(createQrcodeReq, "/api/fun/create/qrcode");
+        Result<CreateQrcodeResp> result = HttpUtils.post(createQrcodeReq, "/api/fun/create/qrcode");
         if (result.getData() != null) {
-            String jsonString = JsonUtil.toJsonString(result.getData());
-            CreateQrcodeResp createQrcodeResp = JsonUtil.parseByClass(jsonString, CreateQrcodeResp.class);
-            result.setData(createQrcodeResp);
+            result.setData(JsonUtil.parseByClass(JsonUtil.toJsonString(result.getData()), CreateQrcodeResp.class));
         }
         return result;
     }
